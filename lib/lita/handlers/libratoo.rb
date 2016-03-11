@@ -20,7 +20,7 @@ module Lita
           response_text = metrics.grep(/#{arguments[1]}/i).join(', ')
           response_text = "No results" if response_text.empty?
           if response_text.length > 400 && !response.message.source.private_message
-            return response.reply "Large result set. Sending you a direct message."
+            response.reply "Large result set. Sending you a direct message."
             return response.reply_privately response_text
           else
             return response.reply response_text
@@ -60,13 +60,13 @@ module Lita
       def librato_search(response)
         Librato::Metrics.authenticate config.email, config.api_key
 
-        arguments = response.matches[0][0].delete(':').split
+        search = response.matches[0][0]
 
         metrics = Librato::Metrics.metrics.map{|v| v["name"] }
-        response_text = metrics.grep(/#{arguments[1]}/i).join(', ')
+        response_text = metrics.grep(/#{search}/i).join(', ')
         response_text = "No results" if response_text.empty?
         if response_text.length > 400 && !response.message.source.private_message
-          return response.reply "Large result set. Sending you a direct message."
+          response.reply "Large result set. Sending you a direct message."
           return response.reply_privately response_text
         else
           return response.reply response_text
