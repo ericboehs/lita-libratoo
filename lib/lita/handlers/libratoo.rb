@@ -1,32 +1,26 @@
 require "librato/metrics"
+require "chronic"
+
 module Lita
   module Handlers
     class Libratoo < Handler
       config :email, required: true
       config :api_key, required: true
 
-      route(/^librato get\s(.+)/, :librato_get, command: true, help: {
+      route(/^librato get\s([^ ]+)\s(.+)/, :librato_get, command: true, help: {
         "librato get [metric] [options]" =>
-          "example: 'lita librato get AWS.RDS.ReplicaLag source: * count: 5 start_time: 2016-03-11-02:00'"
+          "example: 'lita librato get AWS.RDS.ReplicaLag, source: *, count: 5, start_time: \"an hour ago\"'"
       })
 
       def librato_get(response)
         Librato::Metrics.authenticate config.email, config.api_key
 
-        arguments = response.matches[0][0].delete(':').split
-
-        if arguments[0] == "search"
-          metrics = Librato::Metrics.metrics.map{|v| v["name"] }
-          response_text = metrics.grep(/#{arguments[1]}/i).join(', ')
-          response_text = "No results" if response_text.empty?
-          return reply_or_whisper_long response, response_text
-        end
-
-        metric, options = arguments[0].to_sym, arguments[1..-1]
-        options = symbolize_keys Hash[*options]
+        metric = response.matches[0][0]
+        options = parse_options response.matches[0][1]
         options = { count: 1 }.merge options
+
         if options.key?(:start_time) && !options[:start_time].is_a?(Numeric)
-          options[:start_time] = DateTime.parse(options[:start_time]).to_time
+          options[:start_time] = Chronic.parse(options[:start_time]).utc
         end
 
         results = Librato::Metrics.get_measurements metric, options
@@ -45,21 +39,20 @@ module Lita
         reply_or_whisper_long response, e.message
       end
 
-      route(/^librato sum\s(.+)/, :librato_sum, command: true, help: {
+      route(/^librato sum\s([^ ]+)\s(.+)/, :librato_sum, command: true, help: {
         "librato sum [metric] [options]" =>
-          "example: 'lita librato sum payments_controller.stripe.success start_time: 2016-03-11-02:00'"
+          "example: 'lita librato sum payments_controller.stripe.success, start_time: \"an hour ago\"'"
       })
 
       def librato_sum(response)
         Librato::Metrics.authenticate config.email, config.api_key
 
-        arguments = response.matches[0][0].delete(':').split
-
-        metric, options = arguments[0].to_sym, arguments[1..-1]
-        options = symbolize_keys Hash[*options]
+        metric = response.matches[0][0]
+        options = parse_options response.matches[0][1]
         options = { resolution: 1 }.merge options
+
         if options.key?(:start_time) && !options[:start_time].is_a?(Numeric)
-          options[:start_time] = DateTime.parse(options[:start_time]).to_time.to_i
+          options[:start_time] = Chronic.parse(options[:start_time]).utc.to_i
         end
 
         results = Librato::Metrics.get_composite %Q[sum(s("#{metric}", "*", {function: "sum"}))], options
@@ -99,6 +92,10 @@ module Lita
       Lita.register_handler(self)
 
       private
+
+      def parse_options(options)
+        symbolize_keys Hash[*options.scan(/('.*?'|".*?"|\S+)/).flatten.map{|e| e.tr %Q['":], '' }]
+      end
 
       def reply_or_whisper_long(response, response_text)
         response_text = response_text.to_s

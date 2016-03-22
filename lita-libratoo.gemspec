@@ -1,6 +1,6 @@
 Gem::Specification.new do |spec|
   spec.name          = "lita-libratoo"
-  spec.version       = "0.1.3"
+  spec.version       = "0.1.4"
   spec.authors       = ["Eric Boehs"]
   spec.email         = ["ericboehs@gmail.com"]
   spec.description   = "Query librato metrics from Lita"
@@ -16,6 +16,7 @@ Gem::Specification.new do |spec|
 
   spec.add_runtime_dependency "lita", ">= 4.7"
   spec.add_runtime_dependency "librato-metrics", "~> 1.6"
+  spec.add_runtime_dependency "chronic", "~> 0.10"
 
   spec.add_development_dependency "bundler", "~> 1.3"
   spec.add_development_dependency "pry-byebug"
